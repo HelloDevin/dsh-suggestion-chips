@@ -1,6 +1,6 @@
 {
   "id": "dsh-suggestion-chips",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "main": "lib/index.mjs",
   "description": "Suggested follow-up chips above the composer: click to fill the draft, double-click to send.",
   "engines": { "dsh": ">=0.2.2-rc.1 <0.3.0-0" },
