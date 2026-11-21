@@ -2,7 +2,7 @@ export const PACKAGE = 'dsh-suggestion-chips';
 export const SERVICE = 'suggestionChips';
 export const CONTEXT_LIMITS = { latest: { user: 400, assistant: 1200 }, older: { user: 200, assistant: 500 }, tools: 140 };
 export const SUGGESTION_LIMITS = { maxItems: 4, maxChars: 80 };
-export const CONFIG_KEYS = ['enabled', 'doubleClickSend', 'hideWhenTyping', 'count', 'contextTurns', 'timeoutMs', 'provider', 'model'];
+export const CONFIG_KEYS = ['enabled', 'doubleClickSend', 'hideWhenTyping', 'keyboard', 'count', 'contextTurns', 'timeoutMs', 'provider', 'model'];
 
 // Keep the topic and the closing next step; omit code locally, without a summary model call.
 export function compactContext(text, limit) {
@@ -144,7 +144,7 @@ export function validateInput(value) {
 
 export function validateConfigValue(key, value) {
   switch (key) {
-    case 'enabled': case 'doubleClickSend': case 'hideWhenTyping':
+    case 'enabled': case 'doubleClickSend': case 'hideWhenTyping': case 'keyboard':
       if (typeof value !== 'boolean') throw new TypeError(`${key} must be a boolean`);
       return value;
     case 'count': case 'contextTurns':
@@ -164,8 +164,12 @@ export function validateConfigValue(key, value) {
 export function validateConfigPatch(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('Invalid config patch');
   const patch = {};
-  for (const [key, item] of Object.entries(value)) patch[key] = validateConfigValue(key, item);
-  if (!Object.keys(patch).length) throw new TypeError('Empty config patch');
+  // Unknown keys are dropped, not rejected: a newer client may send keys an older
+  // host does not know, and failing the whole patch would desync the settings UI.
+  for (const [key, item] of Object.entries(value)) {
+    if (!CONFIG_KEYS.includes(key)) continue;
+    patch[key] = validateConfigValue(key, item);
+  }
   return patch;
 }
 
@@ -174,9 +178,11 @@ export function validateClientConfig(value) {
   for (const key of ['enabled', 'doubleClickSend', 'hideWhenTyping']) {
     if (typeof value[key] !== 'boolean') throw new TypeError(`Invalid ${key}`);
   }
+  // `keyboard` arrived in 0.4.1: tolerate snapshots from older hosts (default on).
+  if (value.keyboard !== undefined && typeof value.keyboard !== 'boolean') throw new TypeError('Invalid keyboard');
   if (!Number.isInteger(value.count) || value.count < 1 || value.count > 4) throw new TypeError('Invalid count');
   if (!Number.isInteger(value.contextTurns) || value.contextTurns < 1 || value.contextTurns > 4) throw new TypeError('Invalid contextTurns');
-  return { enabled: value.enabled, count: value.count, contextTurns: value.contextTurns, doubleClickSend: value.doubleClickSend, hideWhenTyping: value.hideWhenTyping };
+  return { enabled: value.enabled, count: value.count, contextTurns: value.contextTurns, doubleClickSend: value.doubleClickSend, hideWhenTyping: value.hideWhenTyping, keyboard: value.keyboard !== false };
 }
 
 export function descriptor() {

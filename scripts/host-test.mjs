@@ -42,6 +42,10 @@ await service.recordFeedback({ sessionId: 's1', replyId: 'r1', event: 'shown' })
 await service.recordFeedback({ sessionId: 's1', replyId: 'r1', event: 'fill', text: '先跑一下测试' });
 const second = await service.recommend(input);
 t('cache hit without llm call', llmCalls === 1 && JSON.stringify(second) === JSON.stringify(first));
+const patched = await service.applyChipSettings({ STRAY_KEY: 1, keyboard: false });
+t('unknown patch keys dropped, keyboard applied', patched.keyboard === false);
+const backOn = await service.applyChipSettings({ keyboard: true });
+t('keyboard back on', backOn.keyboard === true);
 const restored = await service.cachedSuggestions(input);
 t('cache-only restore', JSON.stringify(restored) === JSON.stringify(first));
 const missed = await service.cachedSuggestions({ ...input, replyId: 'rX' });
