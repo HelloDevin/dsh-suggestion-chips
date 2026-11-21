@@ -37,7 +37,8 @@ export function createRecommender(llm, getConfig) {
       let result = '';
       const blocks = new Map();
       for await (const chunk of llm.stream({
-        provider, model, system: SYSTEM_TEMPLATE(count), messages: [{ role: 'user', content: [{ type: 'text', text:
+        provider, model, system: SYSTEM_TEMPLATE(count) + (cfg.hint ? `\n\n${cfg.hint}` : ''),
+        messages: [{ role: 'user', content: [{ type: 'text', text:
           // Oldest first so the model reads the transcript in natural order.
           JSON.stringify({ 对话: [...turns].reverse().map(turn => ({
             问题: turn.user, 回答: turn.assistant, ...(turn.tools ? { 工具: turn.tools } : {}),
@@ -56,7 +57,7 @@ export function createRecommender(llm, getConfig) {
       cache.set(key, list);
       if (cache.size > 64) cache.delete(cache.keys().next().value);
       return list;
-    } finally { /* No persistence: this plugin keeps no usage or pricing records. */ }
+    } finally { /* No persistence here: the service layer owns the durable cache. */ }
   };
   return async function recommend(raw, signal) {
     const input = validateInput(raw);

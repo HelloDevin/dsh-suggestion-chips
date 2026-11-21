@@ -8,11 +8,11 @@ const DICTIONARIES = {
     'settings.doubleClickSend': '双击直接发送',
     'settings.hideWhenTyping': '开始打字时隐藏建议',
     'settings.count': '每轮建议条数',
+    'settings.resetMemory': '清空采纳记忆与建议缓存',
+    'settings.memoryCleared': '已清空',
     'settings.loading': '正在读取设置…',
     'settings.saved': '已保存',
     'settings.saveFailed': '保存失败，请重试',
-    'retry': '建议生成失败，点击重试',
-    'hide': '隐藏建议',
     'hint.send': '单击填入输入框，双击直接发送',
     'hint.fill': '单击填入输入框',
   },
@@ -22,11 +22,11 @@ const DICTIONARIES = {
     'settings.doubleClickSend': 'Send on double-click',
     'settings.hideWhenTyping': 'Hide suggestions while typing',
     'settings.count': 'Suggestions per turn',
+    'settings.resetMemory': 'Clear adoption memory & cache',
+    'settings.memoryCleared': 'Cleared',
     'settings.loading': 'Loading settings…',
     'settings.saved': 'Saved',
     'settings.saveFailed': 'Save failed, please retry',
-    'retry': 'Suggestion failed, click to retry',
-    'hide': 'Hide suggestions',
     'hint.send': 'Click to fill the draft, double-click to send',
     'hint.fill': 'Click to fill the draft',
   },
@@ -83,7 +83,7 @@ const CSS_TEXT = `
 .dsh-suggestion-chips-bubble {
   box-sizing: border-box;
   flex: none;
-  max-width: min(100%, 320px);
+  max-width: 320px;
   overflow: hidden;
   padding: 5px 10px;
   border: 1px solid var(--dsw-alias-border-l1, #d8dce2);
@@ -118,17 +118,6 @@ const CSS_TEXT = `
   outline: 2px solid var(--dsw-alias-state-business-primary, #2f6fed);
   outline-offset: 2px;
 }
-.dsh-suggestion-chips-dismiss {
-  flex: none;
-  border: none;
-  background: transparent;
-  color: var(--dsw-alias-label-tertiary, #68707d);
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 20px;
-  padding: 2px 6px;
-}
-.dsh-suggestion-chips-dismiss:hover { color: var(--dsw-alias-label-primary, #23262d); }
 `;
 
 function useComputedStyleTag() {
@@ -148,7 +137,7 @@ function useComputedStyleTag() {
   }, []);
 }
 
-function ChipsRow({ sessionId, useInput, useSession, useConversation, useProjection, inputActions, generate, remote, t }) {
+function ChipsRow({ sessionId, useInput, useSession, useConversation, useProjection, inputActions, generate, cachedFetch, remote, t }) {
   const tr = typeof t === 'function' ? t : (key => FALLBACK[key] ?? key);
   // Props presence is fixed per mount, so guarded hook calls keep a stable order.
   const input = useInput(value => value);
@@ -156,10 +145,7 @@ function ChipsRow({ sessionId, useInput, useSession, useConversation, useProject
   const removed = useSession ? useSession(value => value.removed) : false;
   const selectedModel = useProjection ? useProjection('modelSelection', value => value?.next ?? value?.lastUsed) : undefined;
   const [suggestions, setSuggestions] = useState([]);
-  const [dismissed, setDismissed] = useState(null);
   const [resultKey, setResultKey] = useState(null);
-  const [errorKey, setErrorKey] = useState(null);
-  const [retryTick, setRetryTick] = useState(0);
   const [doubleClickSend, setDoubleClickSend] = useState(true);
   const [hideWhenTyping, setHideWhenTyping] = useState(true);
   const [contextTurns, setContextTurns] = useState(3);
@@ -172,9 +158,17 @@ function ChipsRow({ sessionId, useInput, useSession, useConversation, useProject
   const dockRef = useRef(null);
   const request = useRef(null);
   const filledRef = useRef(null);
+  const impressionRef = useRef(null);
+  const generatedRef = useRef(null); // last (session, reply, turns) we ran a model call for
   const holdTimer = useRef(null);
   const heldRef = useRef(null);
   const contentRef = useRef(null);
+  // The last running-flag we saw for the CURRENT session id. The composer is a
+  // resident component (it survives session switches and restarts re-hydrate old
+  // transcripts progressively), so "is this a new turn" is decided by watching the
+  // running flag go true→false — never by diffing transcript content, which moves
+  // while old sessions hydrate.
+  const wasRunningRef = useRef(null);
 
   // Settings can change on the settings page while sessions stay open; re-read once
   // per turn so the next round of chips follows without a restart.
@@ -195,29 +189,40 @@ function ChipsRow({ sessionId, useInput, useSession, useConversation, useProject
   const unobstructed = !hideWhenTyping || input.draft === '' || input.draft === filledRef.current;
 
   // Reset whenever the turn state moves; generate for the current reply when idle.
-  // A retry bumps retryTick, which rebuilds the job and calls the model again — the
-  // host only caches successful results, so failures are genuinely retried.
   useEffect(() => {
-    setSuggestions([]); setResultKey(null); setErrorKey(null);
-    if (!candidate || running || removed) return;
+    setSuggestions([]); setResultKey(null);
+    // Fresh = the turn finished while we watched (running true→false for THIS
+    // session). Reopening a session never observes that transition, so old replies
+    // are cache-only — no model call, even while the transcript hydrates and its
+    // content signature moves. Generation failures are silent: no retry UI, the
+    // next ended turn simply tries again.
+    const seen = wasRunningRef.current && wasRunningRef.current.sessionId === sessionId
+      ? wasRunningRef.current.running : false;
+    const endedHere = seen === true && running === false;
+    wasRunningRef.current = { sessionId, running: Boolean(running) };
+    const alive = Boolean(candidate) && !running && !removed;
+    if (!alive) return;
     const controller = new AbortController();
     const job = { controller, candidate, replyKey };
     request.current = job;
-    if (idle && dismissed !== replyKey) {
-      generate(job.candidate, job.controller.signal).then(list => {
-        if (!job.controller.signal.aborted && request.current === job) {
-          setSuggestions(Array.isArray(list) ? list : []);
-          setResultKey(job.replyKey);
-        }
-      }).catch(error => {
-        if (!job.controller.signal.aborted && request.current === job) {
-          console.warn('[suggestion-chips] Suggestion unavailable:', error?.message ?? 'unknown error');
-          setErrorKey(job.replyKey);
-        }
-      });
-    }
-    return () => { controller.abort(); if (request.current === job) request.current = null; };
-  }, [sessionId, replyKey, turnsSignature, running, removed, generate, idle, dismissed, retryTick]);
+    const cleanup = () => { controller.abort(); if (request.current === job) request.current = null; };
+    if (!idle) return cleanup;
+    // An ended turn we already generated for (transcript edits, session round-trips)
+    // is served from cache — identical context must not re-cost a model call.
+    const alreadyGenerated = generatedRef.current && generatedRef.current.sessionId === sessionId
+      && generatedRef.current.replyId === candidate.replyId && generatedRef.current.turns === turnsSignature;
+    const fetchImpl = endedHere && !alreadyGenerated ? generate : cachedFetch;
+    fetchImpl(job.candidate, job.controller.signal).then(list => {
+      if (!job.controller.signal.aborted && request.current === job) {
+        if (fetchImpl === generate) generatedRef.current = { sessionId, replyId: candidate.replyId, turns: turnsSignature };
+        setSuggestions(Array.isArray(list) ? list : []);
+        setResultKey(job.replyKey);
+      }
+    }).catch(error => {
+      console.warn('[suggestion-chips] Suggestion unavailable:', error?.message ?? 'unknown error');
+    });
+    return cleanup;
+  }, [sessionId, replyKey, turnsSignature, running, removed, generate, cachedFetch, idle]);
 
   useComputedStyleTag();
 
@@ -237,29 +242,37 @@ function ChipsRow({ sessionId, useInput, useSession, useConversation, useProject
     }
   };
   const lastClickRef = useRef(null);
+  // Best-effort local feedback: the host folds these into future suggestion prompts.
+  const record = (event, text) => {
+    try {
+      if (!candidate) return;
+      const p = remote.recordFeedback({ sessionId, replyId: candidate.replyId, event, ...(text ? { text } : {}) });
+      p?.catch?.(() => {});
+    } catch { /* feedback is optional */ }
+  };
   const onChipClick = text => {
     const now = Date.now();
     const last = lastClickRef.current;
     if (last && last.text === text && now - last.at <= 300) {
       lastClickRef.current = null;
       fill(text);
-      if (doubleClickSend) send();
+      if (doubleClickSend) { record('send', text); send(); } else record('fill', text);
     } else {
       lastClickRef.current = { text, at: now };
       fill(text);
+      record('fill', text);
     }
   };
 
-  const showRow = resultKey === replyKey && dismissed !== replyKey && idle && unobstructed && suggestions.length > 0;
-  const showError = errorKey === replyKey && dismissed !== replyKey && idle && unobstructed;
+  const showRow = resultKey === replyKey && idle && unobstructed && suggestions.length > 0;
   const hint = doubleClickSend ? 'hint.send' : 'hint.fill';
 
   // Content snapshot held across the exit transition: the row fades out with its
   // chips still inside instead of popping empty. The dock stays mounted and the
   // open/closed states animate via CSS (grid rows + opacity), BaoCode-style.
   // No loading placeholder: the row only appears once the chips exist.
-  const contentKey = showError ? `e:${replyKey}` : showRow ? `c:${replyKey}:${suggestions.length}` : '';
-  contentRef.current = showError ? { kind: 'error', replyKey } : showRow ? { kind: 'chips', items: suggestions, replyKey } : null;
+  const contentKey = showRow ? `c:${replyKey}:${suggestions.length}` : '';
+  contentRef.current = showRow ? { kind: 'chips', items: suggestions, replyKey } : null;
   const [held, setHeld] = useState(null);
   const [fading, setFading] = useState(false);
   const [noAnim, setNoAnim] = useState(false);
@@ -269,6 +282,10 @@ function ChipsRow({ sessionId, useInput, useSession, useConversation, useProject
       if (holdTimer.current) { clearTimeout(holdTimer.current); holdTimer.current = null; }
       setFading(false); setNoAnim(false);
       setHeldBoth(contentRef.current);
+      if (contentKey.startsWith('c:') && impressionRef.current !== replyKey) {
+        impressionRef.current = replyKey;
+        record('shown');
+      }
     } else if (heldRef.current !== null && holdTimer.current === null) {
       // Every exit is fade-only: keep the height while fading (submit clears the
       // draft BEFORE the running flag flips, so exit reasons cannot be told apart
@@ -314,23 +331,14 @@ function ChipsRow({ sessionId, useInput, useSession, useConversation, useProject
     },
       h('div', { className: 'dsh-suggestion-chips-collapse' },
         held ? h('div', {
-          className: 'dsh-suggestion-chips-row',
-          role: held.kind === 'chips' ? 'toolbar' : 'status', 'aria-label': tr('settings.nav'),
+          className: 'dsh-suggestion-chips-row', role: 'toolbar', 'aria-label': tr('settings.nav'),
         },
-          held.kind === 'error' ? h('button', {
-            type: 'button', className: 'dsh-suggestion-chips-bubble',
-            title: tr('retry'), onClick: () => setRetryTick(tick => tick + 1),
-          }, tr('retry'))
-            : [
-              ...held.items.map((text, index) => h('button', {
-                key: `${held.replyKey}:${index}`, type: 'button', className: 'dsh-suggestion-chips-bubble',
-                title: tr(hint),
-                style: { animationDelay: `${100 + index * 110}ms` },
-                onClick: () => onChipClick(text),
-              }, text)),
-              h('button', { key: 'dismiss', type: 'button', className: 'dsh-suggestion-chips-dismiss',
-                'aria-label': tr('hide'), title: tr('hide'), onClick: () => setDismissed(held.replyKey) }, '×'),
-            ]) : null)));
+          held.items.map((text, index) => h('button', {
+            key: `${held.replyKey}:${index}`, type: 'button', className: 'dsh-suggestion-chips-bubble',
+            title: tr(hint),
+            style: { animationDelay: `${100 + index * 110}ms` },
+            onClick: () => onChipClick(text),
+          }, text))) : null)));
 }
 
 function SettingsToggle({ label, checked, busy, onChange }) {
@@ -370,6 +378,13 @@ function SettingsSection({ t, remote }) {
           onChange: event => update({ count: Number(event.target.value) }),
           style: { color: 'inherit', background: 'transparent', border: '1px solid color-mix(in srgb, currentColor 20%, transparent)', borderRadius: '6px', padding: '3px 8px' } },
           [1, 2, 3, 4].map(n => h('option', { key: n, value: String(n), style: { color: 'CanvasText', background: 'Canvas' } }, String(n))))),
+      h('button', { key: 'reset', type: 'button', disabled: busy,
+        onClick: () => { setBusy(true); setMessage('');
+          remote.resetMemory().then(result => {
+            if (result.ok) setMessage(tr('settings.memoryCleared')); else setMessage(result.error?.message ?? tr('settings.saveFailed'));
+          }).catch(error => setMessage(error?.message ?? tr('settings.saveFailed'))).finally(() => setBusy(false)); },
+        style: { color: 'inherit', background: 'transparent', border: '1px solid color-mix(in srgb, currentColor 20%, transparent)', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', alignSelf: 'flex-start' } },
+        tr('settings.resetMemory')),
       message && h('p', { key: 'msg', role: 'status', style: { margin: 0, fontSize: '12px', opacity: 0.75 } }, message),
     ]);
 }
@@ -381,7 +396,8 @@ function SettingsSection({ t, remote }) {
 // the UI.
 exports.inject = ['slots', 'remote', 'uiConversation'];
 exports.apply = async function apply(ctx) {
-  await ctx.remote.$mount({ package: PACKAGE, descriptors: [descriptor(), configDescriptor(), setConfigDescriptor()] });
+  console.info('[suggestion-chips] client bundle v0.4.0 loaded');
+  await ctx.remote.$mount({ package: PACKAGE, descriptors: [descriptor(), cachedSuggestionsDescriptor(), configDescriptor(), setConfigDescriptor(), feedbackDescriptor(), resetMemoryDescriptor()] });
   let localeReady = false;
   try {
     if (typeof ctx.locale?.register === 'function') {
@@ -400,9 +416,14 @@ exports.apply = async function apply(ctx) {
       if (!result.ok) throw new Error(result.error.message);
       return result.value;
     };
+    const cachedFetch = async (input, signal) => {
+      const result = await remote.cachedSuggestions(input, signal);
+      if (!result.ok) throw new Error(result.error.message);
+      return result.value;
+    };
     scope.slots.inject('conversation.input.dock', () => scope.slots.register({
       name: 'conversation.input.dock', id: PACKAGE, order: 15, ...dockLocale,
-      inject: () => ({ generate, remote }),
+      inject: () => ({ generate, cachedFetch, remote }),
     }, ChipsRow));
     scope.slots.inject('settings.section', () => scope.slots.register({
       name: 'settings.section', id: PACKAGE, order: 70, ...sectionLocale,

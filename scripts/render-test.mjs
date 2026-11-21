@@ -36,8 +36,11 @@ function makeReactStub() {
 const react = makeReactStub();
 const fakeRemote = {
   recommend: async () => ({ ok: true, value: [] }),
+  cachedSuggestions: async () => ({ ok: true, value: [] }),
   chipSettings: async () => ({ ok: true, value: { enabled: true, count: 3, contextTurns: 3, doubleClickSend: true, hideWhenTyping: true } }),
   applyChipSettings: async () => ({ ok: true, value: { enabled: true, count: 3, contextTurns: 3, doubleClickSend: true, hideWhenTyping: true } }),
+  recordFeedback: async () => true,
+  resetMemory: async () => true,
 };
 const registered = [];
 const slots = {

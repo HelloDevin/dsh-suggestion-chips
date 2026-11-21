@@ -7,8 +7,10 @@ DSH(DeepSeek Harness 0.2.x)插件:AI 回复结束后,在**消息输入框上方*
 - **单击** chip:把建议文本填入输入框(替换当前草稿),可继续编辑;填入不算"打字",行保持显示,双击不受影响
 - **双击** chip:填入后直接发送给 AI(可在设置页关闭,关闭后双击等同单击)
 - 出现/消失带过渡动画:chips 逐个上场(升起+缩放+淡入),退出为纯渐隐
-- 点 **×**:隐藏本轮建议;开始打字时整行自动隐藏(设置页可关)
-- 生成失败时显示"点击重试";Agent/工具调用回合同样会出建议
+- 开始打字时整行自动隐藏(设置页可关);发送或新回复后自动替换上一轮建议
+- 生成失败时静默跳过(界面零打扰),下一个回合自动再试;Agent/工具调用回合同样会出建议
+- **采纳记忆**:本地记录你对建议的采纳与忽略,汇总后反馈进生成提示词——越用越贴合你的习惯;设置页可一键清空
+- **重开会话秒出建议**:建议与反馈持久化在 `~/.dsh/storages/dsh-suggestion-chips/memory.json`(仅存本机,保留 30 天/400 条),重开历史会话直接恢复,不重复调用模型
 - DSH 设置页有「建议追问」分区:启用开关、双击发送、打字隐藏、条数,改动**即时生效**(持久化到 `~/.dsh/storages/dsh-suggestion-chips/settings.json`,优先生效于 yaml 配置)
 
 基于 [jabingu/dsh-reply-suggestions](https://github.com/jabingu/dsh-reply-suggestions) 的宿主架构精简而来(去掉了用量/价格统计),渲染层参考了 [Anionex/dsh-suggested-replies](https://github.com/Anionex/dsh-suggested-replies) 的 `conversation.input.dock` 插槽布局,均遵循 MIT 许可(见 LICENSE)。
