@@ -9,7 +9,7 @@ DSH(DeepSeek Harness 0.2.x)插件:AI 回复结束后,在**消息输入框上方*
 - 生成失败时显示"点击重试";Agent/工具调用回合同样会出建议
 - DSH 设置页有「建议追问」分区:启用开关、双击发送、打字隐藏、条数,改动**即时生效**(持久化到 `~/.dsh/storages/dsh-suggestion-chips/settings.json`,优先生效于 yaml 配置)
 
-基于 [jabingu/dsh-reply-suggestions](https://github.com/jabingu/dsh-reply-suggestions) 的宿主架构精简而来(去掉了用量/价格统计),渲染层参考了 [Anionex/dsh-suggested-replies](https://github.com/Anionex/dsh-suggested-replies) 的 `conversation.input.dock` 插槽布局,均遵循 MIT 许可(见 LICENSE)。chips 的逐个上场动画与"双击 300ms 内发送"交互参考了 [baocode-dev/baocode](https://github.com/baocode-dev/baocode)(GPL-3.0,仅借鉴行为参数与交互设计,未复制任何代码)。
+基于 [jabingu/dsh-reply-suggestions](https://github.com/jabingu/dsh-reply-suggestions) 的宿主架构精简而来(去掉了用量/价格统计),渲染层参考了 [Anionex/dsh-suggested-replies](https://github.com/Anionex/dsh-suggested-replies) 的 `conversation.input.dock` 插槽布局,均遵循 MIT 许可(见 LICENSE)。
 
 ## 安装(desktop 桌面版)
 
