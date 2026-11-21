@@ -9,10 +9,10 @@ DSH(DeepSeek Harness 0.2.x)插件:AI 回复结束后,在**消息输入框上方*
 - 出现/消失带过渡动画:chips 逐个上场(升起+缩放+淡入),退出为纯渐隐
 - 开始打字时整行自动隐藏(设置页可关);发送或新回复后自动替换上一轮建议
 - 生成失败时静默跳过(界面零打扰),下一个回合自动再试;Agent/工具调用回合同样会出建议
-- **键盘快捷键**(可关):↑ 激活选择、←→ 移动、Enter 填入、Ctrl+Enter 直接发送
+- **键盘快捷键**(可关):↑ 激活选择、←→↑↓ 移动(跨行循环)、Enter 填入高亮 chip(草稿已是该 chip 时再按 = 确认发送)、Ctrl+Enter 直接发送、Esc 退出;鼠标点选会同步选中态
 - **采纳记忆**:本地记录你对建议的采纳与忽略,汇总后反馈进生成提示词——越用越贴合你的习惯;设置页可一键清空
 - **重开会话秒出建议**:建议与反馈持久化在 `~/.dsh/storages/dsh-suggestion-chips/memory.json`(仅存本机,保留 30 天/400 条),重开历史会话直接恢复,不重复调用模型
-- DSH 设置页有「建议追问」分区:启用开关、双击发送、打字隐藏、条数,改动**即时生效**(持久化到 `~/.dsh/storages/dsh-suggestion-chips/settings.json`,优先生效于 yaml 配置)
+- DSH 设置页有「建议追问」分区:启用开关、条数、双击发送、打字隐藏、键盘快捷键、清空记忆,改动**即时生效**(持久化到 `~/.dsh/storages/dsh-suggestion-chips/settings.json`,优先生效于 yaml 配置)
 
 基于 [jabingu/dsh-reply-suggestions](https://github.com/jabingu/dsh-reply-suggestions) 的宿主架构精简而来(去掉了用量/价格统计),渲染层参考了 [Anionex/dsh-suggested-replies](https://github.com/Anionex/dsh-suggested-replies) 的 `conversation.input.dock` 插槽布局,均遵循 MIT 许可(见 LICENSE)。
 
@@ -23,6 +23,12 @@ dsh plugin --profile desktop add dsh-suggestion-chips-<版本>.tgz
 ```
 
 装完后**完全退出并重启 DSH Desktop**。也可以直接装目录:`dsh plugin --profile desktop add <本目录绝对路径>`(pnpm 会以 link 方式链接,开发迭代方便)。
+
+已发布 GitHub Release 的话,直接装 Release 附件即可(与工作区目录解耦):
+
+```sh
+dsh plugin --profile desktop add https://github.com/HelloDevin/dsh-suggestion-chips/releases/download/v0.4.3/dsh-suggestion-chips-0.4.3.tgz
+```
 
 ## 配置
 
@@ -47,7 +53,7 @@ dsh plugin --profile desktop add dsh-suggestion-chips-<版本>.tgz
 - 客户端注册 `conversation.input.dock` 插槽(composer 卡片上方的官方停靠区),宽度实测对齐输入卡片
 - 回合结束检测:遍历会话节点,取最近 `contextTurns` 轮 assistant 节点(**含工具调用回合**,工具名序列压缩后一并传入)
 - 建议生成:客户端经 Typert RPC 调用宿主服务,宿主用 `ctx.llm.stream` 请求 JSON 数组并解析清洗(去围栏/引号、单行、去重、截断)
-- 设置:`getConfig`/`setConfig` RPC,宿主原子写 `storages/<pkg>/settings.json`
+- 设置与记忆:`chipSettings`/`applyChipSettings`/`recordFeedback` RPC,宿主原子写 `storages/<pkg>/settings.json` 与 `memory.json`
 - 发送:调用宿主 `inputActions.setDraft()` / `inputActions.submit()` 原生路径
 
 ## 卸载

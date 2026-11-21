@@ -59,7 +59,7 @@ export function createRecommender(llm, getConfig) {
       return list;
     } finally { /* No persistence here: the service layer owns the durable cache. */ }
   };
-  return async function recommend(raw, signal) {
+  const recommend = async function recommend(raw, signal) {
     const input = validateInput(raw);
     if (signal?.aborted) throw signal.reason ?? new Error('Cancelled');
     const cfg = getConfig();
@@ -81,4 +81,6 @@ export function createRecommender(llm, getConfig) {
     }
     return subscribe(job, key, signal);
   };
+  recommend.clearCache = () => { cache.clear(); };
+  return recommend;
 }

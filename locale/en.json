@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Suggestion Chips",
-    "description": "Show follow-up chips above the composer: click to fill the draft, double-click to send."
+    "description": "Follow-up suggestion chips above the composer: click or ↑←→ select, Enter fills, Ctrl+Enter sends. Adoption memory; instant restore on reopen."
   }
 }

@@ -598,11 +598,6 @@ exports.apply = async function apply(ctx) {
       if (!result.ok) throw new Error(result.error.message);
       return result.value;
     };
-    const cachedFetch = async (input, signal) => {
-      const result = await remote.cachedSuggestions(input, signal);
-      if (!result.ok) throw new Error(result.error.message);
-      return result.value;
-    };
     // Cache-first with silent fallback: old replies restore from cache when present,
     // otherwise generate once (cached afterwards). Failures stay invisible.
     const restoreOrGenerate = async (input, signal) => {
