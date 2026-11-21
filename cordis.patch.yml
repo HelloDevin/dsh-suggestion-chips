@@ -1,0 +1,10 @@
+- insert:
+    - id: suggestion-chips
+      name: dsh-suggestion-chips
+      config:
+        enabled: true
+        count: 3
+        contextTurns: 3
+        timeoutMs: 20000
+        doubleClickSend: true
+        hideWhenTyping: true
