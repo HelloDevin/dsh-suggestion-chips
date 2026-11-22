@@ -612,7 +612,7 @@ function SettingsSection({ t, remote }) {
       h('div', { className: 'dsh-suggestion-chips-head-icon' }, '💬'),
       h('div', {},
         h('div', { className: 'dsh-suggestion-chips-title' }, tr('settings.title')),
-        h('div', { className: 'dsh-suggestion-chips-subtitle' }, tr('settings.subtitle')))),
+        h('div', { className: 'dsh-suggestion-chips-subtitle' }, tr('settings.subtitle') + `（v${PLUGIN_VERSION}）`))),
     !config ? h('p', { role: 'status', className: 'dsh-suggestion-chips-msg' }, tr('settings.loading')) : [
       h('div', { className: 'dsh-suggestion-chips-group' }, tr('settings.group.behavior')),
       h('div', { className: 'dsh-suggestion-chips-card' },

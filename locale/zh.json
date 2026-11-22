@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "建议追问 Chips",
-    "description": "AI 回复后在输入框上方显示建议追问：单击或 ↑←→ 选择，Enter 填入，Ctrl+Enter 发送；带采纳记忆，重开会话秒出。"
+    "description": "AI 回复后在输入框上方显示建议追问：单击或 ↑←→↑↓ 选择，Enter 填入，Ctrl+Enter 发送；带采纳记忆与一键更新。"
   }
 }
