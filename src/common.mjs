@@ -259,3 +259,65 @@ export function resetMemoryDescriptor() {
       if (value !== true) throw new TypeError('Unexpected result'); return value;
     } }) } };
 }
+
+// --- Release history for the settings-page 版本 section ---
+
+const RELEASE_TAG_RE = /^v?(\d+\.\d+\.\d+)$/;
+
+export function compareVersions(a, b) {
+  const left = String(a).split('.'), right = String(b).split('.');
+  for (let i = 0; i < 3; i++) {
+    const x = Number(left[i] ?? 0), y = Number(right[i] ?? 0);
+    if (x !== y) return x < y ? -1 : 1;
+  }
+  return 0;
+}
+
+// GitHub Releases API payload → clean [{version, date}] newest-first. Drafts,
+// pre-releases, non-semver tags and duplicates are dropped; date is the local
+// (viewer's timezone) YYYY-MM-DD so 发布于 matches what the user expects.
+export function parseReleases(payload, cap = 20) {
+  if (!Array.isArray(payload)) return [];
+  const seen = new Set();
+  const list = [];
+  for (const release of payload) {
+    if (!release || typeof release !== 'object' || release.draft === true || release.prerelease === true) continue;
+    const tag = typeof release.tag_name === 'string' ? release.tag_name.trim() : '';
+    const match = RELEASE_TAG_RE.exec(tag);
+    if (!match || seen.has(match[1])) continue;
+    const parsed = Date.parse(release.published_at ?? '');
+    let date = null;
+    if (Number.isFinite(parsed)) {
+      const local = new Date(parsed);
+      date = `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, '0')}-${String(local.getDate()).padStart(2, '0')}`;
+    }
+    seen.add(match[1]);
+    list.push({ version: match[1], date });
+  }
+  list.sort((a, b) => compareVersions(b.version, a.version));
+  return list.slice(0, cap);
+}
+
+export function validateReleaseHistory(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('Invalid release history');
+  if (!Number.isFinite(value.checkedAt)) throw new TypeError('Invalid checkedAt');
+  if (!Array.isArray(value.releases) || value.releases.length > 20) throw new TypeError('Invalid releases');
+  for (const release of value.releases) {
+    if (!release || typeof release !== 'object' || !RELEASE_TAG_RE.test(release.version ?? '')
+      || (release.date !== null && !/^\d{4}-\d{2}-\d{2}$/.test(release.date ?? ''))) throw new TypeError('Invalid release entry');
+  }
+  return { releases: value.releases.map(({ version, date }) => ({ version, date })), checkedAt: value.checkedAt };
+}
+
+export function releaseHistoryDescriptor() {
+  return { id: `${PACKAGE}#releaseHistory`, service: SERVICE, namespace: SERVICE, method: 'releaseHistory',
+    invocation: { kind: 'direct' },
+    parameters: [{ name: 'options', wire: 'options', source: 'json', codec: {
+      mode: 'strict', typeSymbol: `${PACKAGE}#ReleaseOptions`, create: () => ({ parse: value => {
+        if (value === undefined || value === null) return { force: false };
+        if (typeof value !== 'object' || Array.isArray(value)) throw new TypeError('Invalid release options');
+        return { force: value.force === true };
+      } }) } }],
+    cancellation: { parameter: 'signal' },
+    result: { mode: 'strict', typeSymbol: `${PACKAGE}#ReleaseHistory`, create: () => ({ parse: validateReleaseHistory }) } };
+}

@@ -14,17 +14,23 @@ const DICTIONARIES = {
     'settings.group.behavior': '建议行为',
     'settings.group.interaction': '交互',
     'settings.group.data': '本地数据',
-    'settings.group.update': '更新',
-    'settings.update.idle': '检查是否有新版本',
-    'settings.update.check': '检查更新',
-    'settings.update.checking': '正在检查更新…',
-    'settings.update.available': '有新版本',
-    'settings.update.button': '一键更新',
+    'settings.group.update': '版本',
+    'settings.versions.check': '重新检查',
+    'settings.versions.checking': '正在检查更新…',
+    'settings.versions.failed': '检查失败（网络）',
+    'settings.versions.retry': '重试',
+    'settings.versions.available': '可更新到 {v}',
+    'settings.versions.published': '发布于 {d}',
+    'settings.versions.latest': 'latest',
+    'settings.versions.installed': '已安装',
+    'settings.versions.uptodate': '已是最新版本',
+    'settings.versions.checkedAt': '检查于 {t}',
+    'settings.versions.expand': '展开',
+    'settings.versions.collapse': '收起',
+    'settings.update.button': '更新',
     'settings.update.updating': '正在更新…',
     'settings.update.done': '更新完成，重启 DSH 生效',
-    'settings.update.uptodate': '已是最新',
     'settings.update.failed': '更新失败',
-    'settings.update.unavailable': '检查失败(网络),点击重试',
     'settings.resetMemoryDesc': '删除本机记录的采纳历史与建议缓存（保留 30 天）',
     'settings.resetMemory': '清空采纳记忆与建议缓存',
     'settings.resetMemoryShort': '清空',
@@ -45,15 +51,22 @@ const DICTIONARIES = {
     'settings.group.behavior': 'Suggestions',
     'settings.group.interaction': 'Interaction',
     'settings.group.data': 'Local data',
-    'settings.group.update': 'Update',
-    'settings.update.idle': 'Check for a new version',
-    'settings.update.check': 'Check for updates',
-    'settings.update.checking': 'Checking for updates…',
-    'settings.update.available': 'A new version is available',
-    'settings.update.button': 'Update now',
+    'settings.group.update': 'Version',
+    'settings.versions.check': 'Recheck',
+    'settings.versions.checking': 'Checking for updates…',
+    'settings.versions.failed': 'Check failed (network)',
+    'settings.versions.retry': 'Retry',
+    'settings.versions.available': 'Update to {v} available',
+    'settings.versions.published': 'Published {d}',
+    'settings.versions.latest': 'latest',
+    'settings.versions.installed': 'installed',
+    'settings.versions.uptodate': 'Up to date',
+    'settings.versions.checkedAt': 'Checked at {t}',
+    'settings.versions.expand': 'Expand',
+    'settings.versions.collapse': 'Collapse',
+    'settings.update.button': 'Update',
     'settings.update.updating': 'Updating…',
     'settings.update.done': 'Updated — restart DSH to apply',
-    'settings.update.uptodate': 'Up to date',
     'settings.update.failed': 'Update failed',
     'settings.resetMemoryDesc': 'Deletes the locally stored adoption history and suggestion cache (30-day window)',
     'settings.resetMemory': 'Clear adoption memory & cache',
@@ -198,6 +211,36 @@ label.dsh-suggestion-chips-setrow { cursor: pointer; }
 .dsh-suggestion-chips-ghostbtn:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(47, 111, 237, .08)); }
 .dsh-suggestion-chips-ghostbtn:disabled { opacity: .5; cursor: default; }
 .dsh-suggestion-chips-msg { margin: 10px 2px 0; font-size: 12px; color: var(--dsw-alias-label-secondary, #5c6470); }
+/* 版本 section: native-style headline card + per-version rows. */
+.dsh-suggestion-chips-verhead { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
+.dsh-suggestion-chips-verhead-icon {
+  width: 32px; height: 32px; flex: none; border-radius: 8px; font-size: 15px;
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary, #2f6fed) 10%, transparent);
+  display: flex; align-items: center; justify-content: center;
+}
+.dsh-suggestion-chips-vertitle { font-size: 13px; font-weight: 600; color: var(--dsw-alias-label-primary, #23262d); }
+.dsh-suggestion-chips-verdate { font-size: 11.5px; color: var(--dsw-alias-label-tertiary, #68707d); margin-top: 2px; }
+.dsh-suggestion-chips-verrow { display: flex; align-items: center; gap: 8px; padding: 9px 14px; }
+.dsh-suggestion-chips-vernum { font-size: 13px; color: var(--dsw-alias-label-primary, #23262d); }
+.dsh-suggestion-chips-pill {
+  flex: none; font-size: 10.5px; line-height: 16px; padding: 0 7px; border-radius: 999px;
+  background: color-mix(in srgb, currentColor 8%, transparent); color: var(--dsw-alias-label-tertiary, #68707d);
+}
+.dsh-suggestion-chips-vertime { margin-left: auto; font-size: 11.5px; color: var(--dsw-alias-label-tertiary, #68707d); }
+.dsh-suggestion-chips-verfoot { display: flex; padding: 8px 14px; font-size: 11.5px; color: var(--dsw-alias-label-tertiary, #68707d); }
+.dsh-suggestion-chips-card > .dsh-suggestion-chips-verrow + .dsh-suggestion-chips-verrow,
+.dsh-suggestion-chips-card > .dsh-suggestion-chips-verrow + .dsh-suggestion-chips-verfoot,
+.dsh-suggestion-chips-card > .dsh-suggestion-chips-verhead + .dsh-suggestion-chips-verrow,
+.dsh-suggestion-chips-card > .dsh-suggestion-chips-verhead + .dsh-suggestion-chips-verfoot {
+  border-top: 1px solid color-mix(in srgb, currentColor 7%, transparent);
+}
+.dsh-suggestion-chips-linkbtn {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px;
+  background: transparent; border: none; cursor: pointer; font-size: 12px;
+  color: var(--dsw-alias-label-secondary, #5c6470);
+}
+.dsh-suggestion-chips-linkbtn:hover { color: var(--dsw-alias-state-business-primary, #2f6fed); }
+.dsh-suggestion-chips-linkbtn:disabled { opacity: .5; cursor: default; }
 `;
 
 // 2D chip navigation: chips are grouped into rows by their rendered position;
@@ -535,7 +578,11 @@ function SettingsSection({ t, remote }) {
   const [config, setLocal] = useState(null);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
-  const [updateInfo, setUpdateInfo] = useState(null);
+  const [releaseInfo, setReleaseInfo] = useState(null); // { list, checkedAt }
+  const [checkState, setCheckState] = useState('loading'); // loading | ready | failed
+  const [expanded, setExpanded] = useState(true);
+  const [updateInfo, setUpdateInfo] = useState(null); // { phase: 'updating' | 'updated' | 'failed', message }
+  const checkSeq = useRef(0);
   useEffect(() => {
     let disposed = false;
     remote.chipSettings().then(result => {
@@ -552,26 +599,31 @@ function SettingsSection({ t, remote }) {
       else { setLocal(previous); setMessage(result.error?.message ?? tr('settings.saveFailed')); }
     }).catch(error => { setLocal(previous); setMessage(error?.message ?? tr('settings.saveFailed')); }).finally(() => setBusy(false));
   };
-  // Update check + one-click update via the dshmarket public update API (v1).
-  // Same-origin fetch from the settings page carries the host session cookie.
-  const checkUpdate = (retry = true) => {
-    setUpdateInfo({ phase: 'checking' });
-    fetch('/dsh-market/api/v1/updates?name=' + encodeURIComponent(PACKAGE) + '&force=1')
-      .then(r => r.json()).then(res => {
-        const pkg = res?.package ?? {};
-        // The market's github resolution needs live GitHub access; on network
-        // failure it returns latest=null + checkFailed — that is NOT "up to date".
-        if (pkg.checkFailed === true) {
-          if (retry) setTimeout(() => checkUpdate(false), 2000);
-          else setUpdateInfo({ phase: 'unavailable' });
-          return;
-        }
-        setUpdateInfo({ phase: pkg.updateAvailable === true ? 'available' : 'uptodate', latestVersion: pkg.latestVersion });
+  // Release history from our own host RPC (GitHub Releases API, TTL-cached);
+  // installed vs latest is decided by a plain version comparison. The dshmarket
+  // API below stays only for the actual install operation.
+  const loadReleases = (force = false) => {
+    const seq = ++checkSeq.current;
+    setCheckState('loading');
+    const run = attempt => (typeof remote.releaseHistory === 'function'
+      ? remote.releaseHistory({ force: force || attempt > 0 }, undefined)
+      : Promise.reject(new Error('releaseHistory RPC unavailable')))
+      .then(result => {
+        if (!result.ok) throw new Error(result.error?.message ?? 'rpc error');
+        if (checkSeq.current !== seq) return;
+        setReleaseInfo({ list: result.value.releases, checkedAt: result.value.checkedAt });
+        setCheckState('ready');
       }).catch(() => {
-        if (retry) setTimeout(() => checkUpdate(false), 2000);
-        else setUpdateInfo({ phase: 'unavailable' });
+        if (checkSeq.current !== seq) return;
+        // One silent retry for transient GitHub hiccups, then an honest failure.
+        if (attempt === 0) setTimeout(() => run(1), 2000);
+        else setCheckState('failed');
       });
+    run(0);
   };
+  useEffect(() => { loadReleases(false); }, [remote]);
+  // One-click update via the dshmarket public update API (v1). Same-origin fetch
+  // from the settings page carries the host session cookie.
   const runUpdate = () => {
     setUpdateInfo(info => ({ phase: 'updating', latestVersion: info?.latestVersion }));
     (async () => {
@@ -603,6 +655,51 @@ function SettingsSection({ t, remote }) {
       }
       setUpdateInfo({ phase: 'failed', message: 'operation timeout' });
     })();
+  };
+  const checkedAtText = releaseInfo ? tr('settings.versions.checkedAt').replace('{t}',
+    new Date(releaseInfo.checkedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : '';
+  const uptodateRow = () => h('div', { className: 'dsh-suggestion-chips-card' },
+    h('div', { className: 'dsh-suggestion-chips-verrow' },
+      h('span', { className: 'dsh-suggestion-chips-vernum' }, tr('settings.versions.uptodate')),
+      h('span', { className: 'dsh-suggestion-chips-vertime' }, checkedAtText)));
+  const renderVersions = () => {
+    if (checkState === 'loading') {
+      return h('div', { className: 'dsh-suggestion-chips-card' },
+        h('div', { className: 'dsh-suggestion-chips-verrow' },
+          h('span', { className: 'dsh-suggestion-chips-vernum' }, tr('settings.versions.checking'))));
+    }
+    if (checkState === 'failed') {
+      return h('div', { className: 'dsh-suggestion-chips-card' },
+        h('div', { className: 'dsh-suggestion-chips-verrow' },
+          h('span', { className: 'dsh-suggestion-chips-vernum' }, tr('settings.versions.failed')),
+          h('button', { type: 'button', className: 'dsh-suggestion-chips-ghostbtn', style: { marginLeft: 'auto' },
+            onClick: () => loadReleases(true) }, tr('settings.versions.retry'))));
+    }
+    const list = releaseInfo?.list ?? [];
+    const latest = list[0] ?? null;
+    if (!latest || compareVersions(latest.version, PLUGIN_VERSION) <= 0) return uptodateRow();
+    return h('div', { className: 'dsh-suggestion-chips-card' },
+      h('div', { className: 'dsh-suggestion-chips-verhead' },
+        h('div', { className: 'dsh-suggestion-chips-verhead-icon' }, '⬇'),
+        h('div', {},
+          h('div', { className: 'dsh-suggestion-chips-vertitle' },
+            tr('settings.versions.available').replace('{v}', latest.version)),
+          latest.date ? h('div', { className: 'dsh-suggestion-chips-verdate' },
+            tr('settings.versions.published').replace('{d}', latest.date)) : null),
+        h('button', { type: 'button', className: 'dsh-suggestion-chips-linkbtn', style: { marginLeft: 'auto' },
+          onClick: () => setExpanded(value => !value) },
+          expanded ? `${tr('settings.versions.collapse')} ⌃` : `${tr('settings.versions.expand')} ⌄`)),
+      expanded ? list.map((release, index) =>
+        h('div', { key: release.version, className: 'dsh-suggestion-chips-verrow' },
+          h('span', { className: 'dsh-suggestion-chips-vernum' }, release.version),
+          index === 0 ? h('span', { className: 'dsh-suggestion-chips-pill' }, tr('settings.versions.latest')) : null,
+          release.version === PLUGIN_VERSION ? h('span', { className: 'dsh-suggestion-chips-pill' }, tr('settings.versions.installed')) : null,
+          h('span', { className: 'dsh-suggestion-chips-vertime' }, release.date ?? ''),
+          index === 0 ? h('button', { type: 'button', className: 'dsh-suggestion-chips-ghostbtn',
+            disabled: updateInfo?.phase === 'updating', onClick: runUpdate },
+            updateInfo?.phase === 'updating' ? tr('settings.update.updating') : tr('settings.update.button')) : null))
+        : null,
+      h('div', { className: 'dsh-suggestion-chips-verfoot' }, checkedAtText));
   };
   const toggleRow = (key, label) => h('label', { className: 'dsh-suggestion-chips-setrow' },
     h('span', { className: 'dsh-suggestion-chips-rowlabel' }, label),
@@ -642,22 +739,14 @@ function SettingsSection({ t, remote }) {
                 else setMessage(result.error?.message ?? tr('settings.saveFailed'));
               }).catch(error => setMessage(error?.message ?? tr('settings.saveFailed'))).finally(() => setBusy(false)); },
             }, tr('settings.resetMemoryShort')))),
-      h('div', { className: 'dsh-suggestion-chips-group' }, tr('settings.group.update')),
-      h('div', { className: 'dsh-suggestion-chips-card' },
-        h('div', { className: 'dsh-suggestion-chips-setrow' },
-          h('span', { className: 'dsh-suggestion-chips-rowlabel' },
-            updateInfo?.phase === 'checking' ? tr('settings.update.checking')
-            : updateInfo?.phase === 'updating' ? tr('settings.update.updating')
-            : updateInfo?.phase === 'updated' ? tr('settings.update.done')
-            : updateInfo?.phase === 'uptodate' ? tr('settings.update.uptodate')
-            : updateInfo?.phase === 'unavailable' ? tr('settings.update.unavailable')
-            : updateInfo?.phase === 'available' ? tr('settings.update.available')
-            : updateInfo?.phase === 'failed' ? `${tr('settings.update.failed')}：${updateInfo.message ?? ''}`
-            : tr('settings.update.idle')),
-          h('button', { type: 'button', className: 'dsh-suggestion-chips-ghostbtn',
-            disabled: busy || updateInfo?.phase === 'checking' || updateInfo?.phase === 'updating' || updateInfo?.phase === 'updated',
-            onClick: () => (updateInfo?.phase === 'available' ? runUpdate() : checkUpdate()) },
-            updateInfo?.phase === 'available' ? tr('settings.update.button') : tr('settings.update.check')))),
+      h('div', { className: 'dsh-suggestion-chips-group', style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
+        h('span', {}, tr('settings.group.update')),
+        h('button', { type: 'button', className: 'dsh-suggestion-chips-linkbtn',
+          disabled: checkState === 'loading' || updateInfo?.phase === 'updating',
+          onClick: () => loadReleases(true) }, tr('settings.versions.check'))),
+      updateInfo?.phase === 'updated' ? h('p', { role: 'status', className: 'dsh-suggestion-chips-msg' }, tr('settings.update.done')) : null,
+      updateInfo?.phase === 'failed' ? h('p', { role: 'status', className: 'dsh-suggestion-chips-msg' }, `${tr('settings.update.failed')}：${updateInfo.message ?? ''}`) : null,
+      renderVersions(),
       message && h('p', { role: 'status', className: 'dsh-suggestion-chips-msg' }, message),
     ]);
 }
@@ -670,7 +759,7 @@ function SettingsSection({ t, remote }) {
 exports.inject = ['slots', 'remote', 'uiConversation'];
 exports.apply = async function apply(ctx) {
   console.info(`[suggestion-chips] client bundle v${PLUGIN_VERSION} loaded`);
-  await ctx.remote.$mount({ package: PACKAGE, descriptors: [descriptor(), cachedSuggestionsDescriptor(), configDescriptor(), setConfigDescriptor(), feedbackDescriptor(), resetMemoryDescriptor()] });
+  await ctx.remote.$mount({ package: PACKAGE, descriptors: [descriptor(), cachedSuggestionsDescriptor(), configDescriptor(), setConfigDescriptor(), feedbackDescriptor(), resetMemoryDescriptor(), releaseHistoryDescriptor()] });
   let localeReady = false;
   try {
     if (typeof ctx.locale?.register === 'function') {

@@ -2,7 +2,7 @@ import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths';
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { PACKAGE, SERVICE, descriptor, cachedSuggestionsDescriptor, configDescriptor, setConfigDescriptor, feedbackDescriptor, resetMemoryDescriptor, validateConfigValue, CONFIG_KEYS } from './common.mjs';
+import { PACKAGE, SERVICE, descriptor, cachedSuggestionsDescriptor, configDescriptor, setConfigDescriptor, feedbackDescriptor, resetMemoryDescriptor, releaseHistoryDescriptor, parseReleases, validateConfigValue, CONFIG_KEYS } from './common.mjs';
 
 import { createRecommender } from './engine.mjs';
 
@@ -14,6 +14,9 @@ const settingsFile = () => join(DATA_DIR(), 'settings.json');
 const memoryFile = () => join(DATA_DIR(), 'memory.json');
 const MEMORY_MAX_ENTRIES = 400;
 const MEMORY_MAX_AGE = 30 * 86400000;
+// Release history for the settings-page 版本 section, straight from GitHub Releases.
+const RELEASES_URL = 'https://api.github.com/repos/HelloDevin/dsh-suggestion-chips/releases?per_page=30';
+const RELEASE_TTL_MS = 30 * 60000;
 
 function readJson(file) { try { return JSON.parse(readFileSync(file, 'utf8')); } catch { return undefined; } }
 function writeJsonAtomic(file, value) {
@@ -30,6 +33,7 @@ class SuggestionChips extends TypertRemoteService {
     this.overrides = this.loadOverrides();
     this.cache = this.loadMemory();
     this.persistTimer = null;
+    this.releaseCache = null;
     // Live accessor: settings-page changes and the memory hint apply immediately.
     this.getConfig = () => ({ ...this.effective(), hint: this.buildHint() });
     this.generate = createRecommender(ctx.llm, this.getConfig);
@@ -166,6 +170,24 @@ class SuggestionChips extends TypertRemoteService {
     try { rmSync(memoryFile(), { force: true }); } catch { /* nothing to clean */ }
     return true;
   }
+  // GitHub Releases with a 30-minute TTL so reopening the settings page does not
+  // re-fetch; `force` bypasses the cache. Failures throw — the client renders them
+  // as 检查失败 with a retry, never as "up to date".
+  async releaseHistory(options, signal) {
+    signal?.throwIfAborted?.();
+    const now = Date.now();
+    if (!options?.force && this.releaseCache && now - this.releaseCache.at < RELEASE_TTL_MS) {
+      return { releases: this.releaseCache.list, checkedAt: this.releaseCache.at };
+    }
+    const response = await fetch(RELEASES_URL, {
+      headers: { 'user-agent': 'dsh-suggestion-chips', accept: 'application/vnd.github+json' },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) throw new Error(`GitHub Releases HTTP ${response.status}`);
+    const list = parseReleases(await response.json());
+    this.releaseCache = { at: now, list };
+    return { releases: list, checkedAt: now };
+  }
 }
 
 export function apply(ctx, config = {}) {
@@ -181,5 +203,5 @@ export function apply(ctx, config = {}) {
   ctx.plugin(SuggestionChips, normalized);
   ctx.typert.register({ package: PACKAGE, face: 'host', schemas: [],
     model: { services: [], events: [], objects: [] },
-    invocations: [descriptor(), cachedSuggestionsDescriptor(), configDescriptor(), setConfigDescriptor(), feedbackDescriptor(), resetMemoryDescriptor()] });
+    invocations: [descriptor(), cachedSuggestionsDescriptor(), configDescriptor(), setConfigDescriptor(), feedbackDescriptor(), resetMemoryDescriptor(), releaseHistoryDescriptor()] });
 }

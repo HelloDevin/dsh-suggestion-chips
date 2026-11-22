@@ -1,6 +1,8 @@
 // Render-level smoke test: executes the client bundle's slot components with a
 // minimal React stub so render-time crashes (TDZ, lost declarations, bad hook
-// order) are caught before an install. Module-load checks alone miss these.
+// order) are caught before an install. The settings section is additionally
+// flushed through its async mount flow (mount effects → RPC → state → re-render)
+// so the release-history "update available" branch renders for real.
 import { readFileSync } from 'node:fs';
 
 const testNodes = [
@@ -15,12 +17,12 @@ const testNodes = [
 function makeReactStub() {
   const slots = [];
   let index = 0;
-  return {
+  const react = {
     createElement: (type, props, ...kids) => ({ type, props, kids }),
     useState(init) {
       const i = index++;
       if (slots[i] === undefined) slots[i] = typeof init === 'function' ? init() : init;
-      const set = value => { slots[i] = typeof value === 'function' ? value(slots[i]) : value; };
+      const set = value => { slots[i] = typeof value === 'function' ? value(slots[i]) : value; react.__dirty = true; };
       return [slots[i], set];
     },
     useRef(init) {
@@ -28,9 +30,22 @@ function makeReactStub() {
       if (slots[i] === undefined) slots[i] = { current: init };
       return slots[i];
     },
-    useEffect() {}, useLayoutEffect() {},
-    __reset() { index = 0; },
+    // Mount semantics: an effect runs once per slot (stable deps ⇒ once per mount).
+    // The slot is allocated UNCONDITIONALLY so hook indices stay identical between
+    // effects-off and effects-on passes. Opt in with __runEffects to exercise
+    // mount-time effects; the dock keeps them inert (they would need a DOM:
+    // ResizeObserver, window listeners).
+    useEffect(callback) {
+      const i = index++;
+      slots[i] = true;
+      if (react.__runEffects) callback?.();
+    },
+    useLayoutEffect() {},
+    __reset(clear = false) { index = 0; if (clear) slots.length = 0; },
+    __dirty: false,
+    __runEffects: false,
   };
+  return react;
 }
 
 const react = makeReactStub();
@@ -41,6 +56,9 @@ const fakeRemote = {
   applyChipSettings: async () => ({ ok: true, value: { enabled: true, count: 3, contextTurns: 3, doubleClickSend: true, hideWhenTyping: true, keyboard: true } }),
   recordFeedback: async () => true,
   resetMemory: async () => true,
+  releaseHistory: async () => ({ ok: true, value: { releases: [
+    { version: '9.9.9', date: '2026-11-22' }, { version: '0.4.9', date: '2026-11-21' },
+  ], checkedAt: Date.now() } }),
 };
 const registered = [];
 const slots = {
@@ -60,10 +78,10 @@ await mod.apply({
   inject(keys, cb) { if (keys.includes('remote.suggestionChips')) cb({ get: () => fakeRemote, slots }); },
 });
 
-function render(slotName) {
+function render(slotName, clear = true) {
   const entry = registered.find(item => item.options.name === slotName);
   if (!entry) throw new Error(`slot not registered: ${slotName}`);
-  react.__reset();
+  react.__reset(clear);
   return entry.Component({
     sessionId: 's1',
     useInput: sel => sel({ draft: '', draftRev: 0, phase: 'plain', attachmentIds: [], occurrences: [], queue: [] }),
@@ -75,9 +93,45 @@ function render(slotName) {
   });
 }
 
+function treeText(node, out = []) {
+  if (typeof node === 'string' || typeof node === 'number') { out.push(String(node)); return out; }
+  if (Array.isArray(node)) { for (const kid of node) treeText(kid, out); return out; }
+  if (node && typeof node === 'object') {
+    if (typeof node.type === 'string') out.push(node.type);
+    for (const kid of node.kids ?? []) treeText(kid, out);
+  }
+  return out;
+}
+
 if (!mod.inject || typeof mod.apply !== 'function') throw new Error('client module exports broken');
 render('conversation.input.dock');
 console.log('ChipsRow rendered ok');
 render('settings.section');
 console.log('SettingsSection rendered ok');
+
+// Flush the settings section: mount effects fire once, the release-history RPC
+// resolves through real microtask hops, and state re-renders the available branch
+// (stub latest 9.9.9 > the built version). A minimal DOM stub covers the
+// style-tag effect the flush now exercises.
+const styleTags = new Map();
+globalThis.document = {
+  getElementById: id => styleTags.get(id) ?? null,
+  createElement: () => ({}),
+  head: { appendChild: () => {} },
+};
+react.__runEffects = true;
+let flushed = null;
+for (let i = 0; i < 8; i++) {
+  react.__dirty = false;
+  flushed = render('settings.section', false);
+  await new Promise(resolve => setImmediate(resolve));
+  if (!react.__dirty) break;
+}
+const text = treeText(flushed).join('|');
+if (text.includes('正在检查更新')) throw new Error(`settings flush stuck on loading: ${text.slice(0, 300)}`);
+if (!text.includes('可更新到 9.9.9')) throw new Error(`available-state render missing headline: ${text.slice(0, 300)}`);
+if (!text.includes('发布于 2026-11-22')) throw new Error('available-state render missing release date');
+if (!text.includes('latest')) throw new Error(`available-state render missing latest badge: ${text.slice(0, 600)}`);
+if (!text.includes('检查于')) throw new Error('available-state render missing checked-at footer');
+console.log('SettingsSection flushed through release flow ok');
 console.log('RENDER TEST OK');
