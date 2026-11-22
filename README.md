@@ -12,7 +12,7 @@ DSH（DeepSeek Harness 0.2.x）插件：AI 回复结束后，在**消息输入�
 - **键盘快捷键**（可关）：↑ 激活选择、←→↑↓ 移动（跨行循环）、Enter 填入高亮 chip（草稿已是该 chip 时再按 = 确认发送）、Ctrl+Enter 直接发送、Esc 退出；鼠标点选会同步选中态
 - **采纳记忆**：本地记录你对建议的采纳与忽略，汇总后反馈进生成提示词——越用越贴合你的习惯；设置页可一键清空
 - **重开会话恢复建议**：建议与反馈持久化在 `~/.dsh/storages/dsh-suggestion-chips/memory.json`（仅存本机，保留 30 天/400 条）——重开时缓存命中就秒出；未命中（如刚清空过缓存、超过 30 天）会静默生成一次并重新缓存
-- **版本区块**：设置页打开即自动检查新版本——「可更新到 x.y.z」头部卡 + 可展开的逐版本列表（发布日期、latest / 已安装标记），点「更新」一键升级；数据来自 GitHub Releases（宿主侧缓存 30 分钟）
+- **版本区块**：设置页打开即自动检查新版本——「可更新到 x.y.z」头部卡 + 可展开的版本列表（最近 5 条，含发布日期、latest / 已安装标记），点「更新」一键升级；数据来自 GitHub Releases（宿主侧缓存 30 分钟）
 - DSH 设置页有「建议追问」分区：启用开关、条数、双击发送、打字隐藏、键盘快捷键、清空记忆，改动**即时生效**（持久化到 `~/.dsh/storages/dsh-suggestion-chips/settings.json`，优先生效于 yaml 配置）
 
 基于 [jabingu/dsh-reply-suggestions](https://github.com/jabingu/dsh-reply-suggestions) 的宿主架构精简而来（去掉了用量/价格统计），渲染层参考了 [Anionex/dsh-suggested-replies](https://github.com/Anionex/dsh-suggested-replies) 的 `conversation.input.dock` 插槽布局，均遵循 MIT 许可（见 LICENSE）。
@@ -56,7 +56,7 @@ dsh plugin --profile desktop add https://github.com/HelloDevin/dsh-suggestion-ch
 
 ## 更新
 
-设置页「版本」区块：打开即自动检查，展示「可更新到 x.y.z」与逐版本列表（发布日期、latest / 已安装标记）；点「更新」经 dshmarket 公开 Update API（v1）完成升级。也可以随时用安装命令重装最新版（永久链接，见上文安装）。
+设置页「版本」区块：打开即自动检查，展示「可更新到 x.y.z」与版本列表（最近 5 条，含发布日期、latest / 已安装标记）；点「更新」经 dshmarket 公开 Update API（v1）完成升级。也可以随时用安装命令重装最新版（永久链接，见上文安装）。
 
 ## 卸载
 

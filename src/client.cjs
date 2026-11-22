@@ -1,6 +1,9 @@
 const { createElement: h, useEffect, useLayoutEffect, useRef, useState } = require('react');
 
 const NS = 'suggestion-chips';
+// Version-list presentation cap: the parsed history stays ≤20 on the host, the
+// section shows only the newest few so the card stays compact.
+const MAX_VERSION_ROWS = 5;
 const DICTIONARIES = {
   zh: {
     'settings.nav': '建议追问',
@@ -689,7 +692,7 @@ function SettingsSection({ t, remote }) {
         h('button', { type: 'button', className: 'dsh-suggestion-chips-linkbtn', style: { marginLeft: 'auto' },
           onClick: () => setExpanded(value => !value) },
           expanded ? `${tr('settings.versions.collapse')} ⌃` : `${tr('settings.versions.expand')} ⌄`)),
-      expanded ? list.map((release, index) =>
+      expanded ? list.slice(0, MAX_VERSION_ROWS).map((release, index) =>
         h('div', { key: release.version, className: 'dsh-suggestion-chips-verrow' },
           h('span', { className: 'dsh-suggestion-chips-vernum' }, release.version),
           index === 0 ? h('span', { className: 'dsh-suggestion-chips-pill' }, tr('settings.versions.latest')) : null,

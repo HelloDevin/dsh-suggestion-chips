@@ -57,7 +57,10 @@ const fakeRemote = {
   recordFeedback: async () => true,
   resetMemory: async () => true,
   releaseHistory: async () => ({ ok: true, value: { releases: [
-    { version: '9.9.9', date: '2026-11-22' }, { version: '0.4.9', date: '2026-11-21' },
+    { version: '9.9.9', date: '2026-11-22' }, { version: '8.8.8', date: '2026-11-21' },
+    { version: '7.7.7', date: '2026-11-20' }, { version: '6.6.6', date: '2026-11-19' },
+    { version: '5.5.5', date: '2026-11-18' }, { version: '4.4.4', date: '2026-11-17' },
+    { version: '0.4.9', date: '2026-11-16' },
   ], checkedAt: Date.now() } }),
 };
 const registered = [];
@@ -132,6 +135,8 @@ if (text.includes('正在检查更新')) throw new Error(`settings flush stuck o
 if (!text.includes('可更新到 9.9.9')) throw new Error(`available-state render missing headline: ${text.slice(0, 300)}`);
 if (!text.includes('发布于 2026-11-22')) throw new Error('available-state render missing release date');
 if (!text.includes('latest')) throw new Error(`available-state render missing latest badge: ${text.slice(0, 600)}`);
+if (!text.includes('5.5.5')) throw new Error('available-state render missing the 5th version row');
+if (text.includes('4.4.4') || text.includes('0.4.9')) throw new Error('version list renders more than the 5 most recent rows');
 if (!text.includes('检查于')) throw new Error('available-state render missing checked-at footer');
 console.log('SettingsSection flushed through release flow ok');
 console.log('RENDER TEST OK');
