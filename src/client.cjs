@@ -554,13 +554,23 @@ function SettingsSection({ t, remote }) {
   };
   // Update check + one-click update via the dshmarket public update API (v1).
   // Same-origin fetch from the settings page carries the host session cookie.
-  const checkUpdate = () => {
+  const checkUpdate = (retry = true) => {
     setUpdateInfo({ phase: 'checking' });
     fetch('/dsh-market/api/v1/updates?name=' + encodeURIComponent(PACKAGE) + '&force=1')
       .then(r => r.json()).then(res => {
         const pkg = res?.package ?? {};
+        // The market's github resolution needs live GitHub access; on network
+        // failure it returns latest=null + checkFailed — that is NOT "up to date".
+        if (pkg.checkFailed === true) {
+          if (retry) setTimeout(() => checkUpdate(false), 2000);
+          else setUpdateInfo({ phase: 'unavailable' });
+          return;
+        }
         setUpdateInfo({ phase: pkg.updateAvailable === true ? 'available' : 'uptodate', latestVersion: pkg.latestVersion });
-      }).catch(() => setUpdateInfo({ phase: 'unavailable' }));
+      }).catch(() => {
+        if (retry) setTimeout(() => checkUpdate(false), 2000);
+        else setUpdateInfo({ phase: 'unavailable' });
+      });
   };
   const runUpdate = () => {
     setUpdateInfo(info => ({ phase: 'updating', latestVersion: info?.latestVersion }));
@@ -640,7 +650,8 @@ function SettingsSection({ t, remote }) {
             : updateInfo?.phase === 'updating' ? tr('settings.update.updating')
             : updateInfo?.phase === 'updated' ? tr('settings.update.done')
             : updateInfo?.phase === 'uptodate' ? tr('settings.update.uptodate')
-            : updateInfo?.phase === 'available' ? `${tr('settings.update.available')}（${updateInfo.latestVersion?.slice(0, 7) ?? ''}）`
+            : updateInfo?.phase === 'unavailable' ? tr('settings.update.unavailable')
+            : updateInfo?.phase === 'available' ? tr('settings.update.available')
             : updateInfo?.phase === 'failed' ? `${tr('settings.update.failed')}：${updateInfo.message ?? ''}`
             : tr('settings.update.idle')),
           h('button', { type: 'button', className: 'dsh-suggestion-chips-ghostbtn',
