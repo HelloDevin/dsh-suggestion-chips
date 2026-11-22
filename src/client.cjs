@@ -510,6 +510,7 @@ function SettingsSwitch({ checked, busy, onChange }) {
 
 function SettingsSection({ t, remote }) {
   const tr = typeof t === 'function' ? t : (key => FALLBACK[key] ?? key);
+  useComputedStyleTag(); // Settings can be opened with no conversation mounted — inject our own stylesheet.
   const [config, setLocal] = useState(null);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
@@ -591,6 +592,41 @@ exports.apply = async function apply(ctx) {
   const sectionLocale = localeReady
     ? { locale: NS, label: () => { try { return ctx.locale.bind(NS)('settings.nav'); } catch { return FALLBACK['settings.nav']; } } }
     : { label: () => FALLBACK['settings.nav'] };
+  // The settings shell hands every non-reserved section the default gear and has no
+  // icon field (same limitation dsh-notify-me documents) — patch our nav row's glyph
+  // by label lookup instead. Re-applies whenever the panel re-portals; silently
+  // no-ops when the markup doesn't match.
+  try {
+    const NAV_SVG = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">'
+      + '<rect x="2" y="2.8" width="9.5" height="3.4" rx="1.7" fill="currentColor" opacity=".95"/>'
+      + '<rect x="4.2" y="7.3" width="9.8" height="3.4" rx="1.7" fill="currentColor" opacity=".65"/>'
+      + '<rect x="2" y="11.8" width="7.4" height="3.4" rx="1.7" fill="currentColor" opacity=".4"/></svg>';
+    const navLabels = [FALLBACK['settings.nav'], DICTIONARIES.en['settings.nav']].map(s => (s || '').trim()).filter(Boolean);
+    let lastPatch = 0;
+    const patchNav = () => {
+      const now = Date.now();
+      if (now - lastPatch < 500) return;
+      lastPatch = now;
+      for (const el of document.querySelectorAll('button, [role="button"], a')) {
+        if (el.getAttribute('data-dsh-chips-nav') === '1') continue;
+        const text = (el.textContent || '').trim();
+        if (!navLabels.includes(text)) continue;
+        const svg = el.querySelector('svg');
+        if (!svg) continue;
+        const tpl = document.createElement('template');
+        tpl.innerHTML = NAV_SVG;
+        svg.replaceWith(tpl.content.firstChild);
+        el.setAttribute('data-dsh-chips-nav', '1');
+        break;
+      }
+    };
+    const navObserver = new MutationObserver(() => { try { patchNav(); } catch { /* markup changes: gear stays */ } });
+    ctx.effect(() => {
+      navObserver.observe(document.body, { childList: true, subtree: true });
+      patchNav();
+      return () => navObserver.disconnect();
+    }, `${PACKAGE}: nav icon`);
+  } catch { /* best effort: the default gear stays */ }
   ctx.inject(['remote.suggestionChips'], scope => {
     const remote = scope.get('remote.suggestionChips');
     const generate = async (input, signal) => {
