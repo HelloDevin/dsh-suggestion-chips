@@ -1,8 +1,8 @@
 {
   "name": "dsh-suggestion-chips",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "icon": "./icon.png",
-  "description": "Suggested follow-up chips above the composer: click to fill the draft, double-click to send.",
+  "description": "Suggested follow-up chips above the DSH composer: click or ↑←→ select, Enter fills, Ctrl+Enter sends. Adoption memory; restore on reopen.",
   "type": "module",
   "engines": {
     "node": ">=22",

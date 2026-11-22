@@ -1,8 +1,8 @@
 {
   "id": "dsh-suggestion-chips",
-  "version": "0.3.3",
+  "version": "0.4.6",
   "main": "lib/index.mjs",
-  "description": "Suggested follow-up chips above the composer: click to fill the draft, double-click to send.",
+  "description": "Suggested follow-up chips above the DSH composer: click or ↑←→ select, Enter fills, Ctrl+Enter sends. Adoption memory; restore on reopen.",
   "engines": { "dsh": ">=0.2.2-rc.1 <0.3.0-0" },
   "contributes": { "tools": [], "skills": [] }
 }
