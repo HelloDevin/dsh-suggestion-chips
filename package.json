@@ -1,6 +1,6 @@
 {
   "name": "dsh-suggestion-chips",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "icon": "./icon.png",
   "description": "Suggested follow-up chips above the DSH composer: click or ↑←→ select, Enter fills, Ctrl+Enter sends. Adoption memory; restore on reopen.",
   "type": "module",
