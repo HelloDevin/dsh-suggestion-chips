@@ -24,11 +24,13 @@ dsh plugin --profile desktop add dsh-suggestion-chips-<版本>.tgz
 
 装完后**完全退出并重启 DSH Desktop**。也可以直接装目录:`dsh plugin --profile desktop add <本目录绝对路径>`(pnpm 会以 link 方式链接,开发迭代方便)。
 
-已发布 GitHub Release 的话,直接装 Release 附件即可(与工作区目录解耦):
+已发布 GitHub Release,直接安装**永久链接**即可(始终指向最新版,与工作区目录解耦):
 
 ```sh
-dsh plugin --profile desktop add https://github.com/HelloDevin/dsh-suggestion-chips/releases/download/v0.4.3/dsh-suggestion-chips-0.4.3.tgz
+dsh plugin --profile desktop add https://github.com/HelloDevin/dsh-suggestion-chips/releases/latest/download/dsh-suggestion-chips.tgz
 ```
+
+插件发布新版本后,**重新执行上面同一条命令**即可完成更新(链接不变)。
 
 ## 配置
 

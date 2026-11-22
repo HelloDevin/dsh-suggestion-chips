@@ -14,6 +14,16 @@ const DICTIONARIES = {
     'settings.group.behavior': '建议行为',
     'settings.group.interaction': '交互',
     'settings.group.data': '本地数据',
+    'settings.group.update': '更新',
+    'settings.update.idle': '检查是否有新版本',
+    'settings.update.check': '检查更新',
+    'settings.update.checking': '正在检查更新…',
+    'settings.update.available': '有新版本',
+    'settings.update.button': '一键更新',
+    'settings.update.updating': '正在更新…',
+    'settings.update.done': '更新完成，重启 DSH 生效',
+    'settings.update.uptodate': '已是最新',
+    'settings.update.failed': '更新失败',
     'settings.resetMemoryDesc': '删除本机记录的采纳历史与建议缓存(保留 30 天)',
     'settings.resetMemory': '清空采纳记忆与建议缓存',
     'settings.resetMemoryShort': '清空',
@@ -34,6 +44,16 @@ const DICTIONARIES = {
     'settings.group.behavior': 'Suggestions',
     'settings.group.interaction': 'Interaction',
     'settings.group.data': 'Local data',
+    'settings.group.update': 'Update',
+    'settings.update.idle': 'Check for a new version',
+    'settings.update.check': 'Check for updates',
+    'settings.update.checking': 'Checking for updates…',
+    'settings.update.available': 'A new version is available',
+    'settings.update.button': 'Update now',
+    'settings.update.updating': 'Updating…',
+    'settings.update.done': 'Updated — restart DSH to apply',
+    'settings.update.uptodate': 'Up to date',
+    'settings.update.failed': 'Update failed',
     'settings.resetMemoryDesc': 'Deletes the locally stored adoption history and suggestion cache (30-day window)',
     'settings.resetMemory': 'Clear adoption memory & cache',
     'settings.resetMemoryShort': 'Clear',
@@ -514,6 +534,7 @@ function SettingsSection({ t, remote }) {
   const [config, setLocal] = useState(null);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState(null);
   useEffect(() => {
     let disposed = false;
     remote.chipSettings().then(result => {
@@ -529,6 +550,39 @@ function SettingsSection({ t, remote }) {
       if (result.ok) { setLocal(result.value); setMessage(tr('settings.saved')); }
       else { setLocal(previous); setMessage(result.error?.message ?? tr('settings.saveFailed')); }
     }).catch(error => { setLocal(previous); setMessage(error?.message ?? tr('settings.saveFailed')); }).finally(() => setBusy(false));
+  };
+  // Update check + one-click update via the dshmarket public update API (v1).
+  // Same-origin fetch from the settings page carries the host session cookie.
+  const checkUpdate = () => {
+    setUpdateInfo({ phase: 'checking' });
+    fetch('/dsh-market/api/v1/updates?name=' + encodeURIComponent(PACKAGE) + '&force=1')
+      .then(r => r.json()).then(res => {
+        const pkg = res?.package ?? {};
+        setUpdateInfo({ phase: pkg.updateAvailable === true ? 'available' : 'uptodate', latestVersion: pkg.latestVersion });
+      }).catch(() => setUpdateInfo({ phase: 'unavailable' }));
+  };
+  const runUpdate = () => {
+    setUpdateInfo(info => ({ phase: 'updating', latestVersion: info?.latestVersion }));
+    (async () => {
+      const res = await fetch('/dsh-market/api/v1/updates', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ packageName: PACKAGE }) }).catch(() => null);
+      const created = res ? await res.json().catch(() => null) : null;
+      if (!res || res.status !== 202 || !created?.operationId) {
+        setUpdateInfo({ phase: 'failed', message: (created && created.message) || 'HTTP ' + (res ? res.status : 'network') });
+        return;
+      }
+      for (let i = 0; i < 120; i++) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const opRes = await fetch('/dsh-market/api/v1/operations?operationId=' + encodeURIComponent(created.operationId)).catch(() => null);
+        const op = opRes ? await opRes.json().catch(() => null) : null;
+        const state = op?.state;
+        if (state === 'succeeded') { setUpdateInfo({ phase: 'updated', latestVersion: op.installedVersion }); return; }
+        if (state === 'failed' || state === 'cancelled' || state === 'rolled-back') {
+          setUpdateInfo({ phase: 'failed', message: op?.message ?? state }); return;
+        }
+      }
+      setUpdateInfo({ phase: 'failed', message: 'operation timeout' });
+    })();
   };
   const toggleRow = (key, label) => h('label', { className: 'dsh-suggestion-chips-setrow' },
     h('span', { className: 'dsh-suggestion-chips-rowlabel' }, label),
@@ -568,6 +622,21 @@ function SettingsSection({ t, remote }) {
                 else setMessage(result.error?.message ?? tr('settings.saveFailed'));
               }).catch(error => setMessage(error?.message ?? tr('settings.saveFailed'))).finally(() => setBusy(false)); },
             }, tr('settings.resetMemoryShort')))),
+      h('div', { className: 'dsh-suggestion-chips-group' }, tr('settings.group.update')),
+      h('div', { className: 'dsh-suggestion-chips-card' },
+        h('div', { className: 'dsh-suggestion-chips-setrow' },
+          h('span', { className: 'dsh-suggestion-chips-rowlabel' },
+            updateInfo?.phase === 'checking' ? tr('settings.update.checking')
+            : updateInfo?.phase === 'updating' ? tr('settings.update.updating')
+            : updateInfo?.phase === 'updated' ? tr('settings.update.done')
+            : updateInfo?.phase === 'uptodate' ? tr('settings.update.uptodate')
+            : updateInfo?.phase === 'available' ? `${tr('settings.update.available')}（${updateInfo.latestVersion?.slice(0, 7) ?? ''}）`
+            : updateInfo?.phase === 'failed' ? tr('settings.update.failed')
+            : tr('settings.update.idle')),
+          h('button', { type: 'button', className: 'dsh-suggestion-chips-ghostbtn',
+            disabled: busy || updateInfo?.phase === 'checking' || updateInfo?.phase === 'updating' || updateInfo?.phase === 'updated',
+            onClick: () => (updateInfo?.phase === 'available' ? runUpdate() : checkUpdate()) },
+            updateInfo?.phase === 'available' ? tr('settings.update.button') : tr('settings.update.check')))),
       message && h('p', { role: 'status', className: 'dsh-suggestion-chips-msg' }, message),
     ]);
 }

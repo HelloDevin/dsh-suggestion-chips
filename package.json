@@ -1,6 +1,6 @@
 {
   "name": "dsh-suggestion-chips",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "icon": "./icon.png",
   "description": "Suggested follow-up chips above the composer: click to fill the draft, double-click to send.",
   "type": "module",
